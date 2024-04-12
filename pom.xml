@@ -2377,6 +2377,8 @@ under the License.
             <exclude>**/*.lst</exclude>
             <exclude>**/*.json</exclude>
             <exclude>**/target/**</exclude>
+            <exclude>Jenkinsfile.talend</exclude>
+            <exclude>.tool-versions</exclude>
           </excludes>
         </configuration>
         <executions>
