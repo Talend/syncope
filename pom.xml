@@ -413,6 +413,7 @@ under the License.
 
     <spring.version>5.3.33</spring.version>
     <spring-security.version>5.7.12</spring-security.version>
+    <owasp.version>20211018.1</owasp.version>
 
     <openjpa.version>3.2.2</openjpa.version>
     <hikaricp.version>4.0.3</hikaricp.version>
@@ -1398,6 +1399,11 @@ under the License.
         <groupId>com.google.code.gson</groupId>
         <artifactId>gson</artifactId>
         <version>2.8.9</version>
+      </dependency>
+      <dependency>
+        <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+        <artifactId>owasp-java-html-sanitizer</artifactId>
+        <version>${owasp.version}</version>
       </dependency>
       <!-- /Wicket -->
       
