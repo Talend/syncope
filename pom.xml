@@ -450,7 +450,7 @@ under the License.
     
     <tika.version>1.28.5</tika.version>
 
-    <h2.version>1.4.200</h2.version>
+    <h2.version>2.2.220</h2.version>
 
     <junit.version>5.9.2</junit.version>
     <mockito.version>4.11.0</mockito.version>
