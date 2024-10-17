@@ -32,7 +32,7 @@ under the License.
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>32</version>
+    <version>33</version>
     <relativePath />
   </parent>
 
@@ -424,7 +424,7 @@ under the License.
 
     <cocoon.version>3.0.0-alpha-3</cocoon.version>
 
-    <groovy.version>3.0.19</groovy.version>
+    <groovy.version>3.0.22</groovy.version>
 
     <flowable.version>6.8.0</flowable.version>
 
@@ -482,7 +482,7 @@ under the License.
     <jsplumb.version>2.0.7</jsplumb.version>
     <chartjs.version>1.0.2</chartjs.version>
     
-    <wicket.version>8.15.0</wicket.version>
+    <wicket.version>8.16.0</wicket.version>
     <wicket-jqueryui.version>8.14.0</wicket-jqueryui.version>
     <wicket-bootstrap.version>2.0.15</wicket-bootstrap.version>
 
@@ -534,7 +534,7 @@ under the License.
     <cargo.log>${log.directory}/cargo.log</cargo.log>
     <cargo.output>${log.directory}/cargo-output.log</cargo.output>
 
-    <tomcat.version>9.0.88</tomcat.version>
+    <tomcat.version>9.0.96</tomcat.version>
 
     <nodejs.version>v8.11.4</nodejs.version>    
     <protractor.version>5.4.0</protractor.version>    
@@ -1441,7 +1441,7 @@ under the License.
       <dependency>
         <groupId>org.apache.pdfbox</groupId>
         <artifactId>pdfbox</artifactId>
-        <version>2.0.31</version>
+        <version>2.0.32</version>
       </dependency>
       
       <dependency>
