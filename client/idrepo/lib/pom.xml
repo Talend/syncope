@@ -31,6 +31,7 @@ under the License.
   <description>Apache Syncope Client IdRepo Lib</description>
   <groupId>org.apache.syncope.client.idrepo</groupId>
   <artifactId>syncope-client-idrepo-lib</artifactId>
+  <version>4.1.0.1</version>
   <packaging>jar</packaging>
   
   <properties>
