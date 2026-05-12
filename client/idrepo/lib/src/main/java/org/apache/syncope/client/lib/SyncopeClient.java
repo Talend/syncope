@@ -274,32 +274,23 @@ public class SyncopeClient {
     protected void init(final AuthenticationHandler authHandler) {
         cleanup();
 
-        switch (authHandler) {
-            case ObtainingJWTAuthenticationHandler obtaining -> {
-                restClientFactory.setUsername(obtaining.getUsername());
-                restClientFactory.setPassword(obtaining.getPassword());
+        if (authHandler instanceof ObtainingJWTAuthenticationHandler obtaining) {
+            restClientFactory.setUsername(obtaining.getUsername());
+            restClientFactory.setPassword(obtaining.getPassword());
 
-                Response response = getService(AccessTokenService.class).login();
-                String jwt = response.getHeaderString(RESTHeaders.TOKEN);
-                restClientFactory.getHeaders().put(HttpHeaders.AUTHORIZATION, List.of("Bearer " + jwt));
-                String jwtExpiration = response.getHeaderString(RESTHeaders.TOKEN_EXPIRE);
-                restClientFactory.getHeaders().put(HttpHeaders.EXPIRES, List.of(jwtExpiration));
+            Response response = getService(AccessTokenService.class).login();
+            String jwt = response.getHeaderString(RESTHeaders.TOKEN);
+            restClientFactory.getHeaders().put(HttpHeaders.AUTHORIZATION, List.of("Bearer " + jwt));
+            String jwtExpiration = response.getHeaderString(RESTHeaders.TOKEN_EXPIRE);
+            restClientFactory.getHeaders().put(HttpHeaders.EXPIRES, List.of(jwtExpiration));
 
-                restClientFactory.setUsername(null);
-                restClientFactory.setPassword(null);
-            }
-
-            case BasicAuthenticationHandler basic -> {
-                restClientFactory.setUsername(basic.getUsername());
-                restClientFactory.setPassword(basic.getPassword());
-            }
-
-            case JWTAuthenticationHandler jwt -> {
-                restClientFactory.getHeaders().put(HttpHeaders.AUTHORIZATION, List.of("Bearer " + jwt.getJwt()));
-            }
-
-            default -> {
-            }
+            restClientFactory.setUsername(null);
+            restClientFactory.setPassword(null);
+        } else if (authHandler instanceof BasicAuthenticationHandler basic) {
+            restClientFactory.setUsername(basic.getUsername());
+            restClientFactory.setPassword(basic.getPassword());
+        } else if (authHandler instanceof JWTAuthenticationHandler jwt) {
+            restClientFactory.getHeaders().put(HttpHeaders.AUTHORIZATION, List.of("Bearer " + jwt.getJwt()));
         }
     }
 
