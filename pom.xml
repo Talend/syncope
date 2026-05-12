@@ -1562,7 +1562,6 @@ under the License.
             <useIncrementalCompilation>false</useIncrementalCompilation>
             <showWarnings>true</showWarnings>
             <showDeprecation>true</showDeprecation>
-            <proc>full</proc>
             <compilerArgs>
               <arg>-Xlint:unchecked</arg>
               <arg>-parameters</arg>
@@ -2045,6 +2044,8 @@ under the License.
             <exclude>**/*font*awesome*</exclude>
             <exclude>**/banner.txt</exclude>
             <exclude>**/target/**</exclude>
+            <exclude>Jenkinsfile.talend</exclude>
+            <exclude>.tool-versions</exclude>
           </excludes>
         </configuration>
         <executions>
