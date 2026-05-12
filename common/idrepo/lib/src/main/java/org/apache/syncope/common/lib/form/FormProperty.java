@@ -157,8 +157,8 @@ public class FormProperty implements Serializable {
         return value;
     }
 
-    public void setValue(final String value) {
-        this.value = value;
+    public void setValue(final Object value) {
+        this.value = (String) value;
     }
 
     @Override

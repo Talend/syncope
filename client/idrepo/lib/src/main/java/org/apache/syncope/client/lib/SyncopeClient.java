@@ -357,6 +357,12 @@ public class SyncopeClient {
         init(handler);
     }
 
+    private String getFirst(List<String> list) {
+        if (list == null || list.isEmpty()) {
+            return null;
+        }
+        return list.get(0);
+    }
     /**
      * Returns the JWT in use by this instance and its expiration timestamp.
      *
@@ -366,7 +372,7 @@ public class SyncopeClient {
     public Optional<JwtInfo> jwtInfo() {
         String value = Optional.ofNullable(restClientFactory.getHeaders().get(HttpHeaders.AUTHORIZATION)).
                 filter(Predicate.not(List::isEmpty)).
-                map(List::getFirst).
+                map(this::getFirst).
                 filter(header -> header.startsWith("Bearer ")).
                 map(header -> header.substring("Bearer ".length())).
                 orElse(null);
@@ -376,7 +382,7 @@ public class SyncopeClient {
 
         OffsetDateTime expiration = Optional.ofNullable(restClientFactory.getHeaders().get(HttpHeaders.EXPIRES)).
                 filter(Predicate.not(List::isEmpty)).
-                map(List::getFirst).
+                map(this::getFirst).
                 map(v -> OffsetDateTime.parse(v, DateTimeFormatter.ISO_OFFSET_DATE_TIME)).
                 orElse(null);
 
@@ -392,7 +398,7 @@ public class SyncopeClient {
         List<String> headerValues = restClientFactory.getHeaders().get(RESTHeaders.DOMAIN);
         return headerValues == null || headerValues.isEmpty()
                 ? SyncopeConstants.MASTER_DOMAIN
-                : headerValues.getFirst();
+                : headerValues.get(0);
     }
 
     /**
