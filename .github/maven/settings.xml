@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Maven settings of the GitHub Actions builds, installed as ~/.m2/settings.xml by .github/actions/maven-settings.
+     The credentials are environment variables (Maven resolves ${env.X} itself), nothing secret is stored here:
+       GLOBAL_ARTIFACTS_USER / GLOBAL_ARTIFACTS_TOKEN   Talend/global-artifacts (GitHub Packages)
+       ARTIFACTORY_USER / ARTIFACTORY_PASSWORD          artifactory.datapwn.com, the mirror of Maven Central
+     Both are set by .github/actions/vault-secrets. -->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <servers>
+    <server>
+      <id>artifactory-maven-central-remote</id>
+      <username>${env.ARTIFACTORY_USER}</username>
+      <password>${env.ARTIFACTORY_PASSWORD}</password>
+    </server>
+    <!-- same id as the repository below and in -DaltDeploymentRepository -->
+    <server>
+      <id>global-artifacts</id>
+      <username>${env.GLOBAL_ARTIFACTS_USER}</username>
+      <password>${env.GLOBAL_ARTIFACTS_TOKEN}</password>
+    </server>
+  </servers>
+
+  <mirrors>
+    <mirror>
+      <id>artifactory-maven-central-remote</id>
+      <mirrorOf>central</mirrorOf>
+      <url>https://artifactory.datapwn.com/artifactory/maven-central-remote</url>
+    </mirror>
+  </mirrors>
+
+  <!-- Already published Syncope GAVs (the modules not rebuilt are resolved from there) -->
+  <profiles>
+    <profile>
+      <id>global-artifacts</id>
+      <repositories>
+        <repository>
+          <id>global-artifacts</id>
+          <url>https://maven.pkg.github.com/Talend/global-artifacts</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>global-artifacts</activeProfile>
+  </activeProfiles>
+</settings>

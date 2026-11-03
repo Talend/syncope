@@ -1,0 +1,44 @@
+# Imports the CI secrets from Vault (JWT auth of the GitHub OIDC token: the job needs `permissions: id-token: write`).
+# Copied from Talend/tesb-rt-ee (.github/actions/vault-secrets).
+# CI_BUILD_DPE_PAT (read/write:packages on Talend/global-artifacts) and the Artifactory credentials (Maven Central mirror)
+# are exported as GLOBAL_ARTIFACTS_USER / GLOBAL_ARTIFACTS_TOKEN / ARTIFACTORY_USER / ARTIFACTORY_PASSWORD for the following steps
+# (see .github/maven/settings.xml).
+# TODO(DPE-4514): confirm the role, the paths and the key names below with the Vault admins.
+name: Vault Secrets
+description: Import the Vault secrets of the Syncope fork builds
+
+inputs:
+  role:
+    description: Vault JWT role granted to this repository
+    required: false
+    default: github-actions-runner-dp-engine
+
+runs:
+  using: composite
+  steps:
+    - name: Import secrets
+      id: vault
+      uses: hashicorp/vault-action@v3
+      with:
+        url: "https://vault-vaas.rnd-cd.cloud.talend.com"
+        role: ${{ inputs.role }}
+        method: jwt
+        path: jwt-github
+        exportEnv: false
+        secrets: |
+          secret/data/dp-engine/ci github-ci-build-dpe-token | github-ci-build-dpe-token;
+          secret/data/dp-engine/ci artifactory-credentials-login | artifactory-credentials-login;
+          secret/data/dp-engine/ci artifactory-credentials-password | artifactory-credentials-password
+    - name: Export the Maven credentials
+      shell: bash
+      env:
+        CI_BUILD_DPE_PAT: ${{ steps.vault.outputs.github-ci-build-dpe-token }}
+        ARTIFACTORY_LOGIN: ${{ steps.vault.outputs.artifactory-credentials-login }}
+        ARTIFACTORY_PWD: ${{ steps.vault.outputs.artifactory-credentials-password }}
+      run: |
+        {
+          echo "GLOBAL_ARTIFACTS_USER=$GITHUB_ACTOR"
+          echo "GLOBAL_ARTIFACTS_TOKEN=$CI_BUILD_DPE_PAT"
+          echo "ARTIFACTORY_USER=$ARTIFACTORY_LOGIN"
+          echo "ARTIFACTORY_PASSWORD=$ARTIFACTORY_PWD"
+        } >> "$GITHUB_ENV"
