@@ -1,6 +1,5 @@
-# Installs .github/maven/settings.xml as ~/.m2/settings.xml (Central mirror on Artifactory, global-artifacts for the Talend artifacts).
-# Run it after vault-secrets (which exports the credentials) and without `server-id` on actions/setup-java,
-# which would otherwise generate its own settings.xml.
+# Installs .github/maven/settings.xml as ~/.m2/settings.xml (global-artifacts server and repository).
+# Run it after actions/setup-java, which generates its own settings.xml.
 name: Maven settings
 description: Install the Maven settings of the Syncope fork builds
 
