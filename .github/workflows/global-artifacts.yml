@@ -1,6 +1,7 @@
 # Publishes the Talend fork modules (former Jenkinsfile.talend, shared-lib step `Fork`) to GitHub Packages (Talend/global-artifacts).
 #   Build -> Deploy (manual workflow_dispatch with `deploy` ticked, approval on the `global-artifacts-deploy` environment).
-# Runs on the internal runners (the repository is private). Credentials come from Vault, see .github/actions/vault-secrets.
+# Public fork: runs on the GitHub-hosted runners. The global-artifacts token is the repository secret CI_BUILD_DPE_PAT
+# (read:packages, plus write:packages for the deploy job).
 # MVN_MODULES (-pl value, upstream modules included through -am): input `mvn_modules` > repository variable MVN_MODULES > default below.
 # Deploy only publishes the GAVs missing from global-artifacts (release versions are immutable: re-deploying one fails with 409),
 # so bump the version in the poms when the content of a module changes.
@@ -33,12 +34,11 @@ concurrency:
 permissions:
   contents: read
   packages: read
-  id-token: write
 
 env:
   MVN_MODULES: ${{ vars.MVN_MODULES || ':syncope-common-idrepo,:syncope-client-idrepo-lib' }}
-  GITHUB_ACTOR: ci-build-dpe
-  # GLOBAL_ARTIFACTS_USER / GLOBAL_ARTIFACTS_TOKEN / ARTIFACTORY_* are exported by the vault-secrets action
+  GLOBAL_ARTIFACTS_USER: ci-build-dpe
+  GLOBAL_ARTIFACTS_TOKEN: ${{ secrets.CI_BUILD_DPE_PAT }}
   GLOBAL_ARTIFACTS_URL: https://maven.pkg.github.com/Talend/global-artifacts
   # ${GLOBAL_ARTIFACTS_URL} is expanded by the `Maven options` step (the env context is not available in a workflow-level env)
   MAVEN_CUSTOM_OPTIONS: >-
@@ -50,23 +50,18 @@ env:
 jobs:
   build:
     name: Build
-    runs-on:
-      group: organization/default
-      labels: runner-medium
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     outputs:
       modules: ${{ steps.modules.outputs.modules }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Vault secrets
-        uses: ./.github/actions/vault-secrets
-
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
-      # after setup-java, which would otherwise leave its own settings.xml
+      # after setup-java, which generates its own settings.xml
       - name: Maven settings
         uses: ./.github/actions/maven-settings
 
@@ -121,20 +116,14 @@ jobs:
     # Jenkins: `input 'Do you want to proceed to the Deployment?'`. Here: required reviewers on the
     # `global-artifacts-deploy` environment (Settings > Environments).
     if: github.event_name == 'workflow_dispatch' && inputs.deploy
-    runs-on:
-      group: organization/default
-      labels: runner-small
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     environment: global-artifacts-deploy
     permissions:
       contents: read
       packages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v7
-
-      - name: Vault secrets
-        uses: ./.github/actions/vault-secrets
 
       - uses: actions/setup-java@v6
         with:
