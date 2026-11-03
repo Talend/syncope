@@ -1,0 +1,176 @@
+# Publishes the Talend fork modules (former Jenkinsfile.talend, shared-lib step `Fork`) to GitHub Packages (Talend/global-artifacts).
+#   Build -> Deploy (manual workflow_dispatch with `deploy` ticked, approval on the `global-artifacts-deploy` environment).
+# Runs on the internal runners (the repository is private). Credentials come from Vault, see .github/actions/vault-secrets.
+# MVN_MODULES (-pl value, upstream modules included through -am): input `mvn_modules` > repository variable MVN_MODULES > default below.
+# Deploy only publishes the GAVs missing from global-artifacts (release versions are immutable: re-deploying one fails with 409),
+# so bump the version in the poms when the content of a module changes.
+name: Publish to global-artifacts
+
+on:
+  push:
+    branches: ['tesb/**']
+  workflow_dispatch:
+    inputs:
+      mvn_modules:
+        description: 'Modules to build, -pl value (default: MVN_MODULES below)'
+        required: false
+        type: string
+      deploy:
+        description: 'Deploy to global-artifacts after the build (needs approval on the environment)'
+        required: false
+        default: false
+        type: boolean
+      deploy_goal:
+        description: 'Maven deploy goal'
+        required: false
+        default: deploy
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+env:
+  MVN_MODULES: ${{ vars.MVN_MODULES || ':syncope-common-idrepo,:syncope-client-idrepo-lib' }}
+  GITHUB_ACTOR: ci-build-dpe
+  # GLOBAL_ARTIFACTS_USER / GLOBAL_ARTIFACTS_TOKEN / ARTIFACTORY_* are exported by the vault-secrets action
+  GLOBAL_ARTIFACTS_URL: https://maven.pkg.github.com/Talend/global-artifacts
+  # ${GLOBAL_ARTIFACTS_URL} is expanded by the `Maven options` step (the env context is not available in a workflow-level env)
+  MAVEN_CUSTOM_OPTIONS: >-
+    -U -B
+    -DaltReleaseDeploymentRepository=global-artifacts::default::${GLOBAL_ARTIFACTS_URL}
+    -DaltSnapshotDeploymentRepository=global-artifacts::default::${GLOBAL_ARTIFACTS_URL}
+    -Drat.skip=true
+
+jobs:
+  build:
+    name: Build
+    runs-on:
+      group: organization/default
+      labels: runner-medium
+    timeout-minutes: 120
+    outputs:
+      modules: ${{ steps.modules.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Vault secrets
+        uses: ./.github/actions/vault-secrets
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      # after setup-java, which would otherwise leave its own settings.xml
+      - name: Maven settings
+        uses: ./.github/actions/maven-settings
+
+      - name: Maven dependencies cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('**/pom.xml') }}-build
+          restore-keys: |
+            m2-${{ hashFiles('**/pom.xml') }}
+            m2
+      - name: Maven options
+        run: echo "MAVEN_CUSTOM_OPTIONS=${MAVEN_CUSTOM_OPTIONS//'${GLOBAL_ARTIFACTS_URL}'/$GLOBAL_ARTIFACTS_URL}" >> "$GITHUB_ENV"
+
+      - name: Resolve MVN_MODULES
+        id: modules
+        env:
+          INPUT_MODULES: ${{ inputs.mvn_modules }}
+        run: |
+          echo "modules=${INPUT_MODULES:-$MVN_MODULES}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Modules to build::${INPUT_MODULES:-$MVN_MODULES}"
+
+      # lists the GAVs of the modules + their upstream modules (-am) and keeps the ones missing from global-artifacts
+      - name: Check GAVs against global-artifacts
+        id: check
+        uses: ./.github/actions/select-gavs
+        with:
+          modules: ${{ steps.modules.outputs.modules }}
+          maven_args: -am
+          url: ${{ env.GLOBAL_ARTIFACTS_URL }}
+          username: ${{ env.GLOBAL_ARTIFACTS_USER }}
+          token: ${{ env.GLOBAL_ARTIFACTS_TOKEN }}
+
+      - name: mvn install
+        env:
+          CHECKED: ${{ steps.check.outputs.checked }}
+          NEW_MODULES: ${{ steps.check.outputs.modules }}
+          MVN_MODULES_IN: ${{ steps.modules.outputs.modules }}
+        run: |
+          mvn --version
+          if [ "$CHECKED" = "true" ]; then
+            # GAVs already published are immutable and never redeployed: build only the new ones
+            if [ -z "$NEW_MODULES" ]; then echo "::notice::every module in scope is already published, nothing to build"; exit 0; fi
+            mvn install $MAVEN_CUSTOM_OPTIONS -pl "$NEW_MODULES" -DskipTests
+          else
+            mvn install $MAVEN_CUSTOM_OPTIONS -pl "$MVN_MODULES_IN" -am -DskipTests
+          fi
+
+  deploy:
+    name: Deploy
+    needs: build
+    # Jenkins: `input 'Do you want to proceed to the Deployment?'`. Here: required reviewers on the
+    # `global-artifacts-deploy` environment (Settings > Environments).
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    runs-on:
+      group: organization/default
+      labels: runner-small
+    timeout-minutes: 120
+    environment: global-artifacts-deploy
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Vault secrets
+        uses: ./.github/actions/vault-secrets
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Maven settings
+        uses: ./.github/actions/maven-settings
+
+      - name: Maven dependencies cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('**/pom.xml') }}-build
+          restore-keys: |
+            m2-${{ hashFiles('**/pom.xml') }}
+            m2
+      - name: Maven options
+        run: echo "MAVEN_CUSTOM_OPTIONS=${MAVEN_CUSTOM_OPTIONS//'${GLOBAL_ARTIFACTS_URL}'/$GLOBAL_ARTIFACTS_URL}" >> "$GITHUB_ENV"
+
+      - name: Select GAVs not yet published
+        id: select
+        uses: ./.github/actions/select-gavs
+        with:
+          modules: ${{ needs.build.outputs.modules }}
+          maven_args: -am
+          url: ${{ env.GLOBAL_ARTIFACTS_URL }}
+          username: ${{ env.GLOBAL_ARTIFACTS_USER }}
+          token: ${{ env.GLOBAL_ARTIFACTS_TOKEN }}
+
+      - name: Fail when the GAV check could not run
+        if: steps.select.outputs.checked != 'true'
+        run: echo "::error::GAV check did not run, refusing to deploy"; exit 1
+
+      - name: mvn deploy
+        if: steps.select.outputs.modules != ''
+        env:
+          MVN_DEPLOY_MODULES: ${{ steps.select.outputs.modules }}
+          MVN_DEPLOY_GOAL: ${{ inputs.deploy_goal }}
+        run: mvn clean "$MVN_DEPLOY_GOAL" $MAVEN_CUSTOM_OPTIONS -pl "$MVN_DEPLOY_MODULES" -DskipTests
